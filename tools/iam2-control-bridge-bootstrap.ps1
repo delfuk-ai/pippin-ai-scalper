@@ -21,12 +21,22 @@ if(-not $gh){
   if(-not $gh){ throw "GitHub CLI install finished but gh is not on PATH. Reopen PowerShell and rerun." }
 }
 
+$oldEap=$ErrorActionPreference
+$ErrorActionPreference="Continue"
 gh auth status 2>$null | Out-Null
-if($LASTEXITCODE -ne 0){
+$needLogin=($LASTEXITCODE -ne 0)
+$ErrorActionPreference=$oldEap
+if($needLogin){
   Write-Host "One-time GitHub authorization is required." -ForegroundColor Yellow
   gh auth login --hostname github.com --git-protocol https --web
+  if($LASTEXITCODE -ne 0){ throw "GitHub authorization failed." }
 }
+$oldEap=$ErrorActionPreference
+$ErrorActionPreference="Continue"
 gh auth status
+$authOk=($LASTEXITCODE -eq 0)
+$ErrorActionPreference=$oldEap
+if(-not $authOk){ throw "GitHub is still not authorized." }
 
 New-Item -ItemType Directory -Path $dst -Force | Out-Null
 
