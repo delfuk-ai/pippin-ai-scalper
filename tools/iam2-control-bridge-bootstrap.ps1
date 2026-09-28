@@ -57,12 +57,13 @@ Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
   ForEach-Object {Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue}
 
 $action=New-ScheduledTaskAction -Execute $pyw -Argument ('"'+$agent+'"')
-$trigger=New-ScheduledTaskTrigger -AtLogOn
+$triggerLogon=New-ScheduledTaskTrigger -AtLogOn
+$triggerKeepalive=New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 1) -RepetitionDuration (New-TimeSpan -Days 3650)
 $settings=New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew
 
 try{
   Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue
-  Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Description "I AM2 GitHub control bridge" -Force | Out-Null
+  Register-ScheduledTask -TaskName $taskName -Action $action -Trigger @($triggerLogon,$triggerKeepalive) -Settings $settings -Description "I AM2 GitHub control bridge with 1-minute self-heal" -Force | Out-Null
   Write-Host "Scheduled task created: $taskName" -ForegroundColor Green
 }catch{
   Write-Host "Scheduled Task unavailable; using Startup folder fallback." -ForegroundColor Yellow
